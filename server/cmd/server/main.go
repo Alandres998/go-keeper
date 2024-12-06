@@ -14,13 +14,13 @@ var (
 
 func main() {
 	if buildVersion == "" {
-		buildVersion = "N/A"
+		buildVersion = "1.0.0"
 	}
 	if buildDate == "" {
-		buildDate = "N/A"
+		buildDate = "2024-12-06"
 	}
 	if buildCommit == "" {
-		buildCommit = "N/A"
+		buildCommit = "--------"
 	}
 	fmt.Printf("Build version: %s\n", buildVersion)
 	fmt.Printf("Build date: %s\n", buildDate)

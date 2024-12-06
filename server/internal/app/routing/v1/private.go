@@ -2,6 +2,7 @@ package v1
 
 import (
 	"context"
+	"fmt"
 	"strconv"
 	"time"
 
@@ -71,14 +72,14 @@ func (s *PrivateServiceServer) FillPrivateData(ctx context.Context, req *private
 	if err != nil {
 		return &private.FillPrivateDataResponse{Success: false, Message: "Ошибка валидации токена"}, nil
 	}
-
+	meta := auth.GetMetaInfo(ctx)
 	// Сохраняем данные
 	privateData := &models.PrivateData{
 		UserID:     userID,
 		TextData:   req.TextData,
 		BinaryData: req.BinaryData,
 		CardNumber: req.CardNumber,
-		MetaInfo:   "", // Пример, заполняйте метаинформацию, если нужно
+		MetaInfo:   fmt.Sprintf("ClientIP: %s, UserAgent: %s", meta.ClientIP, meta.UserAgent),
 	}
 	tx, err := storage.Store.BeginTx(ctx)
 	if err != nil {
@@ -97,7 +98,7 @@ func (s *PrivateServiceServer) FillPrivateData(ctx context.Context, req *private
 		CardNumber: req.CardNumber,
 		TextData:   req.TextData,
 		BinaryData: req.BinaryData,
-		MetaInfo:   "", // Пример, можно добавить актуальную метаинформацию
+		MetaInfo:   fmt.Sprintf("ClientIP: %s, UserAgent: %s", meta.ClientIP, meta.UserAgent),
 		UpdatedAt:  time.Now().Format(time.RFC3339),
 	}
 
