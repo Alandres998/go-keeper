@@ -7,6 +7,7 @@ import (
 	"log"
 	"time"
 
+	"github.com/Alandres998/go-keeper/client/internal/app/consoleclient"
 	configclient "github.com/Alandres998/go-keeper/client/internal/config"
 	"github.com/Alandres998/go-keeper/proto/private"
 	"github.com/manifoldco/promptui"
@@ -105,7 +106,7 @@ func LaunchPrivateData(conn *grpc.ClientConn) {
 		if configclient.Options.PrivatData.CardNumber == "" {
 			FillPrivateDataClient(conn)
 		}
-		PrintPrivateInfo()
+
 		prompt := promptui.Select{
 			Label: "Выберите опцию",
 			Items: []string{"Изменить данные", "Выйти"},
@@ -177,7 +178,7 @@ func syncPrivateDataPeriodically(conn *grpc.ClientConn) {
 			continue
 		}
 		configclient.Options.PrivatData.UpdatedAt = updatedAt
-
+		consoleclient.ClearConsole()
 		// Отобразить обновлённые данные
 		PrintPrivateInfo()
 	}
@@ -191,5 +192,5 @@ func PrintPrivateInfo() {
 	fmt.Printf("Binary Data: %v\n", configclient.Options.PrivatData.BinaryData)
 	fmt.Printf("Meta Info: %s\n", configclient.Options.PrivatData.MetaInfo)
 	fmt.Printf("Updated At: %s\n", configclient.Options.PrivatData.UpdatedAt)
-	fmt.Print("----------------------------------------------\n")
+	fmt.Print("----------------------------------------------\n\n\n\n")
 }

@@ -3,6 +3,7 @@ package initclient
 import (
 	"context"
 	"fmt"
+	"log"
 
 	"github.com/Alandres998/go-keeper/proto/options"
 	"google.golang.org/grpc"
@@ -10,12 +11,16 @@ import (
 
 var (
 	buildVersion = "1.0.0"
-	buildDate    = "2024-12-04"
-	buildCommit  = "abcdef1234567890"
+	buildDate    = "2024-12-06"
+	buildCommit  = "-------"
 )
 
 // GetInfoAboutVersion Выводим данные о билде
 func GetInfoAboutVersion() {
+
+	if err != nil {
+		log.Fatalf("Ошибка при получении информации из Git: %v", err)
+	}
 	fmt.Printf("Build version: %s\n", buildVersion)
 	fmt.Printf("Build date: %s\n", buildDate)
 	fmt.Printf("Build commit: %s\n", buildCommit)

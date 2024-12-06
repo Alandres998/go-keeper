@@ -12,12 +12,6 @@ import (
 	"google.golang.org/grpc"
 )
 
-var (
-	buildVersion = "1.0.0"
-	buildDate    = "2024-12-04"
-	buildCommit  = "abcdef1234567890"
-)
-
 func main() {
 	configclient.InitConfig()
 	initclient.GetInfoAboutVersion()

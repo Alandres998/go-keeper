@@ -64,6 +64,7 @@ func stringToBool(value string) bool {
 	return value == "true"
 }
 
+// getEnv Енв с дефолтным значением
 func getEnv(key, defaultValue string) string {
 	if value, exists := os.LookupEnv(key); exists {
 		return value
