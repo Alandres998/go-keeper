@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/Alandres998/go-keeper/models"
 	"github.com/Alandres998/go-keeper/proto/auth"
 	authlogin "github.com/Alandres998/go-keeper/server/internal/app/auth"
 	"github.com/Alandres998/go-keeper/server/internal/app/db/storage"
-	"github.com/Alandres998/go-keeper/server/internal/app/models"
 	"golang.org/x/crypto/bcrypt"
 )
 

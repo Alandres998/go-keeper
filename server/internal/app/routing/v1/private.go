@@ -2,134 +2,107 @@ package v1
 
 import (
 	"context"
-	"fmt"
+	"strconv"
 	"time"
 
+	"github.com/Alandres998/go-keeper/models"
 	"github.com/Alandres998/go-keeper/proto/private"
 	"github.com/Alandres998/go-keeper/server/internal/app/auth" // Импортируем пакет для валидации токенов
 	"github.com/Alandres998/go-keeper/server/internal/app/db/storage"
-	logger "github.com/Alandres998/go-keeper/server/internal/app/loger"
-	"github.com/Alandres998/go-keeper/server/internal/app/models"
+	syncmanager "github.com/Alandres998/go-keeper/server/internal/app/sync"
 )
 
+// Структура для хранения соединений
 type PrivateServiceServer struct {
 	private.UnimplementedPrivateServiceServer
+	syncManager *syncmanager.SyncManager[*private.PrivateDataSyncResponse]
 }
 
-// FillPrivateData обрабатывает запрос на добавление личных данных.
-func (s *PrivateServiceServer) FillPrivateData(ctx context.Context, req *private.FillPrivateDataRequest) (*private.FillPrivateDataResponse, error) {
-	// Проверка наличия токена в запросе
-	if req.Token == "" {
-		return &private.FillPrivateDataResponse{
-			Success: false,
-			Message: "Токен не был передан",
-		}, nil
+// Иницилазиация сервера
+func NewPrivateServiceServer(syncManager *syncmanager.SyncManager[*private.PrivateDataSyncResponse]) *PrivateServiceServer {
+	return &PrivateServiceServer{
+		syncManager: syncManager,
 	}
-	logger.LoginInfo("Приватные данные", "Принял запрос есть токен")
+}
+
+func (s *PrivateServiceServer) SyncPrivateData(stream private.PrivateService_SyncPrivateDataServer) error {
+	req, err := stream.Recv()
+	if err != nil {
+		return err
+	}
+
+	userID, err := auth.ValidateToken(req.GetToken())
+	if err != nil {
+		return err
+	}
+
+	s.syncManager.AddStream(strconv.Itoa(userID), stream)
+	defer s.syncManager.RemoveStream(strconv.Itoa(userID), stream)
+
+	data, err := storage.Store.GetPrivateDataByUserID(stream.Context(), userID)
+	if err != nil {
+		return err
+	}
+	if data != nil {
+		resp := &private.PrivateDataSyncResponse{
+			CardNumber: data.CardNumber,
+			TextData:   data.TextData,
+			BinaryData: data.BinaryData,
+			MetaInfo:   data.MetaInfo,
+			UpdatedAt:  time.Now().Format(time.RFC3339),
+		}
+		if err := stream.Send(resp); err != nil {
+			return err
+		}
+	}
+
+	// Поддерживаем соединение до завершения
+	<-stream.Context().Done()
+	return nil
+}
+
+func (s *PrivateServiceServer) FillPrivateData(ctx context.Context, req *private.FillPrivateDataRequest) (*private.FillPrivateDataResponse, error) {
+	if req.Token == "" {
+		return &private.FillPrivateDataResponse{Success: false, Message: "Токен отсутствует"}, nil
+	}
+
+	// Валидируем токен
 	userID, err := auth.ValidateToken(req.Token)
 	if err != nil {
-		return &private.FillPrivateDataResponse{
-			Success: false,
-			Message: fmt.Sprintf("Ошибка валидации токена: %v", err),
-		}, nil
+		return &private.FillPrivateDataResponse{Success: false, Message: "Ошибка валидации токена"}, nil
 	}
-	logger.LoginInfo("Приватные данные", "Токен валиден")
-	if req.CardNumber == "" {
-		return &private.FillPrivateDataResponse{
-			Success: false,
-			Message: "Поле card_number не должно быть пустым",
-		}, nil
-	}
-	meta := auth.GetMetaInfo(ctx)
 
+	// Сохраняем данные
 	privateData := &models.PrivateData{
 		UserID:     userID,
-		DataType:   "default",
-		DataKey:    "key",
 		TextData:   req.TextData,
 		BinaryData: req.BinaryData,
 		CardNumber: req.CardNumber,
-		MetaInfo:   fmt.Sprintf(`{"source": "grpc", "time": "%s" ,"meta:" "%s"}`, time.Now().Format(time.RFC3339), meta),
+		MetaInfo:   "", // Пример, заполняйте метаинформацию, если нужно
 	}
-	logger.LoginInfo("Приватные данные", "Заполнил данные")
 	tx, err := storage.Store.BeginTx(ctx)
 	if err != nil {
-		return &private.FillPrivateDataResponse{
-			Success: false,
-			Message: fmt.Sprintf("Ошибка начала транзакции: %v", err),
-		}, nil
+		return nil, err
 	}
-
-	dataVersion, err := storage.Store.CountUserLogins(ctx, tx, userID)
-	if err != nil {
-		return &private.FillPrivateDataResponse{
-			Success: false,
-			Message: fmt.Sprintf("Ошибка при синхронизации: %v", err),
-		}, nil
-	}
-
-	dataVersion++
-
-	history := &models.SyncHistory{
-		UserID:        userID,
-		SyncTimestamp: time.Now(),
-		DataVersion:   dataVersion,
-		OperationType: "login",
-		MetaInfo:      fmt.Sprintf("Client IP: %s, User-Agent: %s", meta.ClientIP, meta.UserAgent),
-	}
-	_, err = storage.Store.AddSyncHistory(ctx, tx, history)
-	logger.LoginInfo("Приватные данные", "Синхронизировал данные")
-	data, err := storage.Store.InsertPrivateData(ctx, tx, privateData)
-	if err != nil {
+	if _, err = storage.Store.InsertOrUpdatePrivateData(ctx, tx, privateData); err != nil {
 		tx.Rollback()
-		return &private.FillPrivateDataResponse{
-			Success: false,
-			Message: fmt.Sprintf("Ошибка сохранения данных: %v", err),
-		}, nil
+		return nil, err
+	}
+	if err := tx.Commit(); err != nil {
+		return nil, err
 	}
 
-	err = tx.Commit()
-	logger.LoginInfo("Приватные данные", "Коммит")
-	if err != nil {
-		return &private.FillPrivateDataResponse{
-			Success: false,
-			Message: fmt.Sprintf("Ошибка завершения транзакции: %v", err),
-		}, nil
+	// Формируем обновление
+	resp := &private.PrivateDataSyncResponse{
+		CardNumber: req.CardNumber,
+		TextData:   req.TextData,
+		BinaryData: req.BinaryData,
+		MetaInfo:   "", // Пример, можно добавить актуальную метаинформацию
+		UpdatedAt:  time.Now().Format(time.RFC3339),
 	}
 
-	return &private.FillPrivateDataResponse{
-		Success: true,
-		Message: fmt.Sprintf("Данные успешно сохранены. ID: %d", data.ID),
-	}, nil
-}
+	// Отправляем обновление всем потокам пользователя
+	s.syncManager.Broadcast(strconv.Itoa(userID), resp)
 
-// GetPrivateData возвращает данные из таблицы
-func (s *PrivateServiceServer) GetPrivateData(ctx context.Context, req *private.GetPrivateDataRequest) (*private.GetPrivateDataResponse, error) {
-	// Проверяем токен
-	userID, err := auth.ValidateToken(req.Token)
-	if err != nil {
-		return nil, fmt.Errorf("Недействительный токен")
-	}
-
-	// Получаем данные из таблицы
-	data, err := storage.Store.GetPrivateDataByUserID(ctx, userID)
-	if err != nil {
-		return nil, fmt.Errorf("Ошибка получения данных: %v", err)
-	}
-
-	// Формируем ответ
-	var privateDataList []*private.PrivateData
-	for _, d := range data {
-		privateDataList = append(privateDataList, &private.PrivateData{
-			Id:         int32(d.ID),
-			CardNumber: d.CardNumber,
-			TextData:   d.TextData,
-			BinaryData: d.BinaryData,
-			MetaInfo:   d.MetaInfo,
-		})
-	}
-
-	return &private.GetPrivateDataResponse{
-		PrivateData: privateDataList,
-	}, nil
+	return &private.FillPrivateDataResponse{Success: true, Message: "Данные успешно сохранены"}, nil
 }

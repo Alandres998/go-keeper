@@ -38,5 +38,6 @@ func main() {
 	}
 	fmt.Print("Успешная установка соединения с сервером\n")
 	authclient.StartSession(conn)
-	privatecliens.FillPrivateDataClient(conn)
+	privatecliens.LaunchPrivateData(conn)
+	//privatecliens.FillPrivateDataClient(conn)
 }

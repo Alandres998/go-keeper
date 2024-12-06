@@ -20,7 +20,7 @@ const _ = grpc.SupportPackageIsVersion9
 
 const (
 	PrivateService_FillPrivateData_FullMethodName = "/PrivateService/FillPrivateData"
-	PrivateService_GetPrivateData_FullMethodName  = "/PrivateService/GetPrivateData"
+	PrivateService_SyncPrivateData_FullMethodName = "/PrivateService/SyncPrivateData"
 )
 
 // PrivateServiceClient is the client API for PrivateService service.
@@ -28,7 +28,7 @@ const (
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type PrivateServiceClient interface {
 	FillPrivateData(ctx context.Context, in *FillPrivateDataRequest, opts ...grpc.CallOption) (*FillPrivateDataResponse, error)
-	GetPrivateData(ctx context.Context, in *GetPrivateDataRequest, opts ...grpc.CallOption) (*GetPrivateDataResponse, error)
+	SyncPrivateData(ctx context.Context, opts ...grpc.CallOption) (grpc.BidiStreamingClient[PrivateDataSyncRequest, PrivateDataSyncResponse], error)
 }
 
 type privateServiceClient struct {
@@ -49,22 +49,25 @@ func (c *privateServiceClient) FillPrivateData(ctx context.Context, in *FillPriv
 	return out, nil
 }
 
-func (c *privateServiceClient) GetPrivateData(ctx context.Context, in *GetPrivateDataRequest, opts ...grpc.CallOption) (*GetPrivateDataResponse, error) {
+func (c *privateServiceClient) SyncPrivateData(ctx context.Context, opts ...grpc.CallOption) (grpc.BidiStreamingClient[PrivateDataSyncRequest, PrivateDataSyncResponse], error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(GetPrivateDataResponse)
-	err := c.cc.Invoke(ctx, PrivateService_GetPrivateData_FullMethodName, in, out, cOpts...)
+	stream, err := c.cc.NewStream(ctx, &PrivateService_ServiceDesc.Streams[0], PrivateService_SyncPrivateData_FullMethodName, cOpts...)
 	if err != nil {
 		return nil, err
 	}
-	return out, nil
+	x := &grpc.GenericClientStream[PrivateDataSyncRequest, PrivateDataSyncResponse]{ClientStream: stream}
+	return x, nil
 }
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type PrivateService_SyncPrivateDataClient = grpc.BidiStreamingClient[PrivateDataSyncRequest, PrivateDataSyncResponse]
 
 // PrivateServiceServer is the server API for PrivateService service.
 // All implementations must embed UnimplementedPrivateServiceServer
 // for forward compatibility.
 type PrivateServiceServer interface {
 	FillPrivateData(context.Context, *FillPrivateDataRequest) (*FillPrivateDataResponse, error)
-	GetPrivateData(context.Context, *GetPrivateDataRequest) (*GetPrivateDataResponse, error)
+	SyncPrivateData(grpc.BidiStreamingServer[PrivateDataSyncRequest, PrivateDataSyncResponse]) error
 	mustEmbedUnimplementedPrivateServiceServer()
 }
 
@@ -78,8 +81,8 @@ type UnimplementedPrivateServiceServer struct{}
 func (UnimplementedPrivateServiceServer) FillPrivateData(context.Context, *FillPrivateDataRequest) (*FillPrivateDataResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method FillPrivateData not implemented")
 }
-func (UnimplementedPrivateServiceServer) GetPrivateData(context.Context, *GetPrivateDataRequest) (*GetPrivateDataResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method GetPrivateData not implemented")
+func (UnimplementedPrivateServiceServer) SyncPrivateData(grpc.BidiStreamingServer[PrivateDataSyncRequest, PrivateDataSyncResponse]) error {
+	return status.Errorf(codes.Unimplemented, "method SyncPrivateData not implemented")
 }
 func (UnimplementedPrivateServiceServer) mustEmbedUnimplementedPrivateServiceServer() {}
 func (UnimplementedPrivateServiceServer) testEmbeddedByValue()                        {}
@@ -120,23 +123,12 @@ func _PrivateService_FillPrivateData_Handler(srv interface{}, ctx context.Contex
 	return interceptor(ctx, in, info, handler)
 }
 
-func _PrivateService_GetPrivateData_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(GetPrivateDataRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(PrivateServiceServer).GetPrivateData(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: PrivateService_GetPrivateData_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(PrivateServiceServer).GetPrivateData(ctx, req.(*GetPrivateDataRequest))
-	}
-	return interceptor(ctx, in, info, handler)
+func _PrivateService_SyncPrivateData_Handler(srv interface{}, stream grpc.ServerStream) error {
+	return srv.(PrivateServiceServer).SyncPrivateData(&grpc.GenericServerStream[PrivateDataSyncRequest, PrivateDataSyncResponse]{ServerStream: stream})
 }
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type PrivateService_SyncPrivateDataServer = grpc.BidiStreamingServer[PrivateDataSyncRequest, PrivateDataSyncResponse]
 
 // PrivateService_ServiceDesc is the grpc.ServiceDesc for PrivateService service.
 // It's only intended for direct use with grpc.RegisterService,
@@ -149,11 +141,14 @@ var PrivateService_ServiceDesc = grpc.ServiceDesc{
 			MethodName: "FillPrivateData",
 			Handler:    _PrivateService_FillPrivateData_Handler,
 		},
+	},
+	Streams: []grpc.StreamDesc{
 		{
-			MethodName: "GetPrivateData",
-			Handler:    _PrivateService_GetPrivateData_Handler,
+			StreamName:    "SyncPrivateData",
+			Handler:       _PrivateService_SyncPrivateData_Handler,
+			ServerStreams: true,
+			ClientStreams: true,
 		},
 	},
-	Streams:  []grpc.StreamDesc{},
 	Metadata: "proto/private.proto",
 }

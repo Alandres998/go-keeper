@@ -4,6 +4,8 @@ import (
 	"flag"
 	"os"
 	"time"
+
+	"github.com/Alandres998/go-keeper/models"
 )
 
 // OptionsStruct структура с настройками
@@ -11,6 +13,8 @@ type OptionsStruct struct {
 	ServerAdress string
 	UserToken    string
 	TimeOut      time.Duration
+	TimeRefresh  time.Duration
+	PrivatData   models.PrivateData
 }
 
 // Options общая конфигурация проекта
@@ -19,6 +23,7 @@ var Options OptionsStruct
 // InitConfig инициализация конфига
 func InitConfig() {
 	Options.TimeOut = 5 * time.Second
+	Options.TimeRefresh = 2 * time.Second
 	loadEnv()
 }
 
