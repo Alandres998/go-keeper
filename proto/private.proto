@@ -1,0 +1,36 @@
+syntax = "proto3";
+
+option go_package = "./proto/private";
+
+service PrivateService {
+  rpc FillPrivateData(FillPrivateDataRequest) returns (FillPrivateDataResponse);
+  rpc GetPrivateData(GetPrivateDataRequest) returns (GetPrivateDataResponse); // Новый метод
+}
+
+message FillPrivateDataRequest {
+  string token = 1;        // Токен для аутентификации
+  string card_number = 2;  // Номер карты
+  string text_data = 3;    // Текстовые данные
+  bytes binary_data = 4;   // Бинарные данные
+}
+
+message FillPrivateDataResponse {
+  bool success = 1;        // Успех выполнения операции
+  string message = 2;      // Сообщение об ошибке/успехе
+}
+
+message GetPrivateDataRequest {
+  string token = 1;        // Токен для аутентификации
+}
+
+message GetPrivateDataResponse {
+  repeated PrivateData private_data = 1; // Список записей из таблицы
+}
+
+message PrivateData {
+  int32 id = 1;            // ID записи
+  string card_number = 2;  // Номер карты
+  string text_data = 3;    // Текстовые данные
+  bytes binary_data = 4;   // Бинарные данные
+  string meta_info = 5;    // Метаинформация
+}

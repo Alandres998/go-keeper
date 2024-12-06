@@ -19,4 +19,5 @@ type Storage interface {
 	GetUserByLogin(ctx context.Context, tx *sqlx.Tx, login string) (*models.User, error)
 	AddSyncHistory(ctx context.Context, tx *sqlx.Tx, history *models.SyncHistory) (*models.SyncHistory, error)
 	CountUserLogins(ctx context.Context, tx *sqlx.Tx, userID int) (int, error)
+	InsertPrivateData(ctx context.Context, tx *sqlx.Tx, data *models.PrivateData) (*models.PrivateData, error)
 }

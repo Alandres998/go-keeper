@@ -58,3 +58,29 @@ func GetMetaInfo(ctx context.Context) MetaRequestInfo {
 	}
 	return meta
 }
+
+// ValidateToken проверяет токен и возвращает ID пользователя, если токен действителен
+func ValidateToken(tokenStr string) (int, error) {
+
+	token, err := jwt.Parse(tokenStr, func(token *jwt.Token) (interface{}, error) {
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, fmt.Errorf("неизвестный метод подписи: %v", token.Header["alg"])
+		}
+		return []byte(secretKey), nil
+	})
+	if err != nil || !token.Valid {
+		return 0, fmt.Errorf("невалидный токен: %v", err)
+	}
+
+	claims, ok := token.Claims.(jwt.MapClaims)
+	if !ok {
+		return 0, fmt.Errorf("не удалось извлечь данные из токена")
+	}
+
+	userID, ok := claims["user_id"].(float64)
+	if !ok {
+		return 0, fmt.Errorf("отсутствует ID пользователя в токене")
+	}
+
+	return int(userID), nil
+}

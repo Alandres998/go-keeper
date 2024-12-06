@@ -4,6 +4,8 @@ import (
 	"net"
 
 	"github.com/Alandres998/go-keeper/proto/auth"
+	"github.com/Alandres998/go-keeper/proto/options"
+	"github.com/Alandres998/go-keeper/proto/private"
 	"github.com/Alandres998/go-keeper/server/internal/app/db/storagefactory"
 	logger "github.com/Alandres998/go-keeper/server/internal/app/loger"
 	v1 "github.com/Alandres998/go-keeper/server/internal/app/routing/v1"
@@ -22,6 +24,12 @@ func RunServer() {
 	// Регистрируем сервис аутентификации
 	authService := &v1.AuthService{}
 	auth.RegisterAuthServiceServer(grpcServer, authService)
+
+	optionsService := &v1.OptionsServiceServer{}
+	options.RegisterOptionsServiceServer(grpcServer, optionsService)
+
+	privateService := &v1.PrivateServiceServer{}
+	private.RegisterPrivateServiceServer(grpcServer, privateService)
 	reflection.Register(grpcServer)
 
 	// Создаем TCP слушатель

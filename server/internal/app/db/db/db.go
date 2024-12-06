@@ -205,3 +205,62 @@ func (s *DBStorage) CountUserLogins(ctx context.Context, tx *sqlx.Tx, userID int
 
 	return count, nil
 }
+
+// InsertPrivateData добавляет запись в таблицу private_data.
+func (s *DBStorage) InsertPrivateData(ctx context.Context, tx *sqlx.Tx, data *models.PrivateData) (*models.PrivateData, error) {
+	query := `
+		INSERT INTO private_data (user_id, data_type, data_key, text_data, binary_data, card_number, created_at, updated_at, meta_info)
+		VALUES ($1, $2, $3, $4, $5, $6, NOW(), NOW(), $7)
+		RETURNING id, created_at, updated_at
+	`
+
+	metaInfoJSON, err := json.Marshal(data.MetaInfo)
+	if err != nil {
+		return nil, fmt.Errorf("ошибка сериализации meta_info: %v", err)
+	}
+
+	var row *sql.Row
+	if tx != nil {
+		row = tx.QueryRowContext(ctx, query, data.UserID, data.DataType, data.DataKey, data.TextData, data.BinaryData, data.CardNumber, metaInfoJSON)
+	} else {
+		row = s.db.QueryRowContext(ctx, query, data.UserID, data.DataType, data.DataKey, data.TextData, data.BinaryData, data.CardNumber, metaInfoJSON)
+	}
+
+	err = row.Scan(&data.ID, &data.CreatedAt, &data.UpdatedAt)
+	if err != nil {
+		return nil, fmt.Errorf("ошибка выполнения запроса: %v", err)
+	}
+
+	return data, nil
+}
+
+// GetPrivateDataByUserID возвращает данные пользователя по userID
+func (s *DBStorage) GetPrivateDataByUserID(ctx context.Context, userID int) ([]*models.PrivateData, error) {
+	query := `
+		SELECT id, user_id, card_number, text_data, binary_data, meta_info
+		FROM private_data
+		WHERE user_id = $1
+	`
+
+	rows, err := s.db.QueryContext(ctx, query, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var privateDataList []*models.PrivateData
+
+	for rows.Next() {
+		var data models.PrivateData
+		if err := rows.Scan(&data.ID, &data.UserID, &data.CardNumber, &data.TextData, &data.BinaryData, &data.MetaInfo); err != nil {
+			return nil, err
+		}
+		privateDataList = append(privateDataList, &data)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return privateDataList, nil
+}
