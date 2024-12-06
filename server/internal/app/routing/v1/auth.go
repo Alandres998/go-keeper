@@ -130,7 +130,7 @@ func (s *AuthService) Login(ctx context.Context, req *auth.LoginRequest) (*auth.
 	if err != nil {
 		return &auth.LoginResponse{
 			Success: false,
-			Message: fmt.Sprintf("Failed to generate token: %v", err),
+			Message: fmt.Sprintf("Не корректный токен: %v", err),
 		}, err
 	}
 

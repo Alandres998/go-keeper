@@ -1,4 +1,3 @@
-# Ensure paths are correct
 SERVER_PATH=server/cmd/server
 CLIENT_PATH=client/cmd
 

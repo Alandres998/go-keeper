@@ -14,13 +14,13 @@ import (
 	"google.golang.org/grpc"
 )
 
-// Структура клиентаНаСокетах
+// ClientSoket Структура клиентаНаСокетах
 type ClientSoket struct {
 	client private.PrivateServiceClient
 	conn   *grpc.ClientConn
 }
 
-// Закинуть данные на сервер
+// FillPrivateDataClient Закинуть данные на сервер
 func FillPrivateDataClient(conn *grpc.ClientConn) (*private.FillPrivateDataResponse, error) {
 	var cardNumber string
 	var textData string
@@ -165,19 +165,18 @@ func syncPrivateDataPeriodically(conn *grpc.ClientConn) {
 			break
 		}
 
-		// Обновляем локальные данные
 		configclient.Options.PrivatData.CardNumber = resp.CardNumber
 		configclient.Options.PrivatData.TextData = resp.TextData
 		configclient.Options.PrivatData.BinaryData = resp.BinaryData
 		configclient.Options.PrivatData.MetaInfo = resp.MetaInfo
-
-		// Парсинг времени
 		updatedAt, err := time.Parse(time.RFC3339, resp.UpdatedAt)
 		if err != nil {
 			log.Printf("Не смог отформатировать время: %v", err)
 			continue
 		}
+
 		configclient.Options.PrivatData.UpdatedAt = updatedAt
+
 		consoleclient.ClearConsole()
 		// Отобразить обновлённые данные
 		PrintPrivateInfo()
