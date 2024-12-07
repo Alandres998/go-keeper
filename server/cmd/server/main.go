@@ -20,7 +20,7 @@ func main() {
 		buildDate = "2024-12-06"
 	}
 	if buildCommit == "" {
-		buildCommit = "--------"
+		buildCommit = "---------"
 	}
 	fmt.Printf("Build version: %s\n", buildVersion)
 	fmt.Printf("Build date: %s\n", buildDate)
