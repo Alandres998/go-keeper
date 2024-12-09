@@ -1,9 +1,11 @@
 package authclient
 
 import (
+	"bufio"
 	"context"
 	"fmt"
 	"log"
+	"os"
 	"time"
 
 	configclient "github.com/Alandres998/go-keeper/client/internal/config"
@@ -44,10 +46,19 @@ func StartSession(conn *grpc.ClientConn) {
 
 func loginUser(client auth.AuthServiceClient) {
 	var username, password string
+
+	scanner := bufio.NewScanner(os.Stdin)
+
 	fmt.Print("Логин: ")
-	fmt.Scanln(&username)
+	if scanner.Scan() {
+		username = scanner.Text()
+	}
+
 	fmt.Print("Пароль: ")
-	fmt.Scanln(&password)
+	if scanner.Scan() {
+		password = scanner.Text()
+	}
+
 	ctx, cancel := context.WithTimeout(context.Background(), configclient.Options.TimeOut)
 	defer cancel()
 
@@ -69,12 +80,22 @@ func loginUser(client auth.AuthServiceClient) {
 
 func registerUser(client auth.AuthServiceClient) {
 	var username, password, email string
+	scanner := bufio.NewScanner(os.Stdin)
+
 	fmt.Print("Логин: ")
-	fmt.Scanln(&username)
+	if scanner.Scan() {
+		username = scanner.Text()
+	}
+
 	fmt.Print("Пароль: ")
-	fmt.Scanln(&password)
+	if scanner.Scan() {
+		password = scanner.Text()
+	}
+
 	fmt.Print("Email: ")
-	fmt.Scanln(&email)
+	if scanner.Scan() {
+		email = scanner.Text()
+	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()

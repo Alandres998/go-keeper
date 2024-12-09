@@ -1,37 +1,49 @@
 package privatecliens
 
 import (
+	"bufio"
 	"context"
 	"fmt"
 	"io"
 	"log"
+	"os"
 	"time"
 
-	"github.com/Alandres998/go-keeper/client/internal/app/consoleclient"
+	"github.com/Alandres998/go-keeper/client/internal/app/sync"
 	configclient "github.com/Alandres998/go-keeper/client/internal/config"
 	"github.com/Alandres998/go-keeper/proto/private"
 	"github.com/manifoldco/promptui"
 	"google.golang.org/grpc"
 )
 
-// ClientSoket Структура клиентаНаСокетах
-type ClientSoket struct {
+// Client Структура клиентаНаСокетах
+type Client struct {
 	client private.PrivateServiceClient
 	conn   *grpc.ClientConn
 }
 
-// FillPrivateDataClient Закинуть данные на сервер
-func FillPrivateDataClient(conn *grpc.ClientConn) (*private.FillPrivateDataResponse, error) {
+// SendPrivateDataClient Закинуть данные на сервер
+func SendPrivateDataClient(conn *grpc.ClientConn) (*private.FillPrivateDataResponse, error) {
 	var cardNumber string
 	var textData string
 	var binaryData []byte
 
+	scanner := bufio.NewScanner(os.Stdin)
+
 	fmt.Print("Номер карты: ")
-	fmt.Scanln(&cardNumber)
+	if scanner.Scan() {
+		cardNumber = scanner.Text()
+	}
+
 	fmt.Print("Описание: ")
-	fmt.Scanln(&textData)
+	if scanner.Scan() {
+		textData = scanner.Text()
+	}
+
 	fmt.Print("Загружаем файл в бинарник: ")
-	fmt.Scanln(&binaryData)
+	if scanner.Scan() {
+		binaryData = []byte(scanner.Text())
+	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), configclient.Options.TimeOut)
 	defer cancel()
@@ -49,11 +61,11 @@ func FillPrivateDataClient(conn *grpc.ClientConn) (*private.FillPrivateDataRespo
 	if err != nil {
 		return nil, fmt.Errorf("ошибка при вызове метода FillPrivateData: %v", err)
 	}
-	go syncPrivateDataPeriodically(conn)
+	sync.SyncPrivateData(conn)
 	return resp, nil
 }
 
-// PrivateDataSync вызывает серверный метод PrivateDataSync
+// PrivateDataSync получить даныне из сервера
 func PrivateDataSync(conn *grpc.ClientConn) error {
 	// Создаём запрос
 	ctx, cancel := context.WithTimeout(context.Background(), configclient.Options.TimeOut)
@@ -99,12 +111,12 @@ func PrivateDataSync(conn *grpc.ClientConn) error {
 func LaunchPrivateData(conn *grpc.ClientConn) {
 	exit := false
 	// Запускаем горутину для фонового обновления данных
-	go syncPrivateDataPeriodically(conn)
+	go sync.SyncPrivateData(conn)
 
 	for {
 		PrivateDataSync(conn)
 		if configclient.Options.PrivatData.CardNumber == "" {
-			FillPrivateDataClient(conn)
+			SendPrivateDataClient(conn)
 		}
 
 		prompt := promptui.Select{
@@ -118,7 +130,7 @@ func LaunchPrivateData(conn *grpc.ClientConn) {
 		}
 		switch result {
 		case "Изменить данные":
-			FillPrivateDataClient(conn)
+			SendPrivateDataClient(conn)
 		case "Выйти":
 			exit = true
 		}
@@ -126,70 +138,4 @@ func LaunchPrivateData(conn *grpc.ClientConn) {
 			break
 		}
 	}
-}
-
-// LaunchPrivateData функция запуска опросника
-func syncPrivateDataPeriodically(conn *grpc.ClientConn) {
-	client := private.NewPrivateServiceClient(conn)
-
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	// Создаём поток для получения обновлений
-	stream, err := client.SyncPrivateData(ctx)
-	if err != nil {
-		log.Printf("Ошибка при создании потока: %v", err)
-		return
-	}
-
-	// Отправляем токен пользователя для авторизации
-	err = stream.Send(&private.PrivateDataSyncRequest{
-		Token: configclient.Options.UserToken,
-	})
-	if err != nil {
-		log.Printf("Ошибка при отправке данных в поток: %v", err)
-		return
-	}
-
-	log.Println("Подписка на обновления успешна")
-
-	// Получаем данные из потока
-	for {
-		resp, err := stream.Recv()
-		if err == io.EOF {
-			log.Println("Поток завершён")
-			break
-		}
-		if err != nil {
-			log.Printf("Ошибка при получении данных: %v", err)
-			break
-		}
-
-		configclient.Options.PrivatData.CardNumber = resp.CardNumber
-		configclient.Options.PrivatData.TextData = resp.TextData
-		configclient.Options.PrivatData.BinaryData = resp.BinaryData
-		configclient.Options.PrivatData.MetaInfo = resp.MetaInfo
-		updatedAt, err := time.Parse(time.RFC3339, resp.UpdatedAt)
-		if err != nil {
-			log.Printf("Не смог отформатировать время: %v", err)
-			continue
-		}
-
-		configclient.Options.PrivatData.UpdatedAt = updatedAt
-
-		consoleclient.ClearConsole()
-		// Отобразить обновлённые данные
-		PrintPrivateInfo()
-	}
-}
-
-// Отобразить пользователю свою информацию
-func PrintPrivateInfo() {
-	fmt.Print("----------------------------------------------\n")
-	fmt.Printf("Card Number: %s\n", configclient.Options.PrivatData.CardNumber)
-	fmt.Printf("Text Data: %s\n", configclient.Options.PrivatData.TextData)
-	fmt.Printf("Binary Data: %v\n", configclient.Options.PrivatData.BinaryData)
-	fmt.Printf("Meta Info: %s\n", configclient.Options.PrivatData.MetaInfo)
-	fmt.Printf("Updated At: %s\n", configclient.Options.PrivatData.UpdatedAt)
-	fmt.Print("----------------------------------------------\n\n\n\n")
 }

@@ -3,6 +3,7 @@ package configserver
 import (
 	"flag"
 	"os"
+	"time"
 )
 
 // OptionsStruct структура с настройками
@@ -10,6 +11,7 @@ type OptionsStruct struct {
 	ServerAdress string
 	DatabaseDSN  string
 	SecretJWTKey string
+	TimeOut      time.Duration
 }
 
 // Options общая конфигурация проекта
@@ -17,6 +19,7 @@ var Options OptionsStruct
 
 // InitConfig инициализация конфига
 func InitConfig() {
+	Options.TimeOut = 5 * time.Second
 	loadEnv()
 }
 

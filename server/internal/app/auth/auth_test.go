@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"context"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -8,7 +9,9 @@ import (
 
 func TestGenerateToken(t *testing.T) {
 	userID := 1
-	token, err := GenerateToken(userID)
+	ctx := context.Background()
+
+	token, err := GenerateToken(ctx, userID)
 
 	assert.NoError(t, err)
 	assert.NotEmpty(t, token)

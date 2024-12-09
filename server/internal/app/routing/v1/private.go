@@ -2,14 +2,13 @@ package v1
 
 import (
 	"context"
-	"fmt"
 	"strconv"
 	"time"
 
-	"github.com/Alandres998/go-keeper/models"
 	"github.com/Alandres998/go-keeper/proto/private"
 	"github.com/Alandres998/go-keeper/server/internal/app/auth" // Импортируем пакет для валидации токенов
 	"github.com/Alandres998/go-keeper/server/internal/app/db/storage"
+	privateservices "github.com/Alandres998/go-keeper/server/internal/app/services/privateServices"
 	syncmanager "github.com/Alandres998/go-keeper/server/internal/app/sync"
 )
 
@@ -72,36 +71,15 @@ func (s *PrivateServiceServer) FillPrivateData(ctx context.Context, req *private
 	if err != nil {
 		return &private.FillPrivateDataResponse{Success: false, Message: "Ошибка валидации токена"}, nil
 	}
-	meta := auth.GetMetaInfo(ctx)
-	// Сохраняем данные
-	privateData := &models.PrivateData{
-		UserID:     userID,
-		TextData:   req.TextData,
-		BinaryData: req.BinaryData,
-		CardNumber: req.CardNumber,
-		MetaInfo:   fmt.Sprintf("ClientIP: %s, UserAgent: %s", meta.ClientIP, meta.UserAgent),
-	}
-	tx, err := storage.Store.BeginTx(ctx)
-	if err != nil {
-		return nil, err
-	}
-	if _, err = storage.Store.InsertOrUpdatePrivateData(ctx, tx, privateData); err != nil {
-		tx.Rollback()
-		return nil, err
-	}
-	if err := tx.Commit(); err != nil {
-		return nil, err
-	}
-
 	// Формируем обновление
+	privateData, err := privateservices.CreatePrivateData(ctx, userID, req.TextData, req.BinaryData, req.CardNumber)
 	resp := &private.PrivateDataSyncResponse{
-		CardNumber: req.CardNumber,
-		TextData:   req.TextData,
-		BinaryData: req.BinaryData,
-		MetaInfo:   fmt.Sprintf("ClientIP: %s, UserAgent: %s", meta.ClientIP, meta.UserAgent),
+		CardNumber: privateData.CardNumber,
+		TextData:   privateData.TextData,
+		BinaryData: privateData.BinaryData,
+		MetaInfo:   privateData.MetaInfo,
 		UpdatedAt:  time.Now().Format(time.RFC3339),
 	}
-
 	// Отправляем обновление всем потокам пользователя
 	s.syncManager.Broadcast(strconv.Itoa(userID), resp)
 

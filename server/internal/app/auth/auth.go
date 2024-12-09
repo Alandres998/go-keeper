@@ -21,7 +21,12 @@ type MetaRequestInfo struct {
 }
 
 // GenerateToken Сгенерировать токен
-func GenerateToken(userID int) (string, error) {
+func GenerateToken(ctx context.Context, userID int) (string, error) {
+	select {
+	case <-ctx.Done():
+		return "", ctx.Err()
+	default:
+	}
 	// Сюда бы конечно можно закинуть payLoad но это же учебный проект
 	claims := jwt.MapClaims{
 		"user_id": userID,

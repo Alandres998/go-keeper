@@ -15,7 +15,13 @@ import (
 	"google.golang.org/grpc/reflection"
 )
 
-var globalSyncManager = syncmanager.NewSyncManager[*private.PrivateDataSyncResponse]()
+type Server struct {
+	syncManager *syncmanager.SyncManager[*private.PrivateDataSyncResponse]
+}
+
+func NewServer(syncManager *syncmanager.SyncManager[*private.PrivateDataSyncResponse]) *Server {
+	return &Server{syncManager: syncManager}
+}
 
 // RunServer Запускаем сервер
 func RunServer() {
@@ -30,6 +36,7 @@ func RunServer() {
 	optionsService := &v1.OptionsServiceServer{}
 	options.RegisterOptionsServiceServer(grpcServer, optionsService)
 
+	globalSyncManager := syncmanager.NewSyncManager[*private.PrivateDataSyncResponse]()
 	privateService := v1.NewPrivateServiceServer(globalSyncManager)
 	private.RegisterPrivateServiceServer(grpcServer, privateService)
 
