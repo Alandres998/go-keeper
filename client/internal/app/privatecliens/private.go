@@ -9,7 +9,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/Alandres998/go-keeper/client/internal/app/sync"
+	syncclient "github.com/Alandres998/go-keeper/client/internal/app/sync"
 	configclient "github.com/Alandres998/go-keeper/client/internal/config"
 	"github.com/Alandres998/go-keeper/proto/private"
 	"github.com/manifoldco/promptui"
@@ -61,7 +61,7 @@ func SendPrivateDataClient(conn *grpc.ClientConn) (*private.FillPrivateDataRespo
 	if err != nil {
 		return nil, fmt.Errorf("ошибка при вызове метода FillPrivateData: %v", err)
 	}
-	sync.SyncPrivateData(conn)
+	go syncclient.SyncPrivateData(conn)
 	return resp, nil
 }
 
@@ -111,7 +111,7 @@ func PrivateDataSync(conn *grpc.ClientConn) error {
 func LaunchPrivateData(conn *grpc.ClientConn) {
 	exit := false
 	// Запускаем горутину для фонового обновления данных
-	go sync.SyncPrivateData(conn)
+	go syncclient.SyncPrivateData(conn)
 
 	for {
 		PrivateDataSync(conn)

@@ -14,10 +14,10 @@ var (
 
 func main() {
 	if buildVersion == "" {
-		buildVersion = "1.0.0"
+		buildVersion = "1.0.1"
 	}
 	if buildDate == "" {
-		buildDate = "2024-12-06"
+		buildDate = "2024-12-09"
 	}
 	if buildCommit == "" {
 		buildCommit = "--------"
