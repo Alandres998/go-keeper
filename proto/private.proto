@@ -1,0 +1,32 @@
+syntax = "proto3";
+
+option go_package = "./proto/private";
+
+service PrivateService {
+  rpc FillPrivateData(FillPrivateDataRequest) returns (FillPrivateDataResponse);
+  rpc SyncPrivateData(stream PrivateDataSyncRequest) returns (stream PrivateDataSyncResponse);
+}
+
+message FillPrivateDataRequest {
+  string token = 1;        // Токен для аутентификации
+  string card_number = 2;  // Номер карты
+  string text_data = 3;    // Текстовые данные
+  bytes binary_data = 4;   // Бинарные данные
+}
+
+message FillPrivateDataResponse {
+  bool success = 1;        // Успех выполнения операции
+  string message = 2;      // Сообщение об ошибке/успехе
+}
+
+message PrivateDataSyncRequest {
+  string token = 1; // Токен для аутентификации
+}
+
+message PrivateDataSyncResponse {
+  string card_number = 1;
+  string text_data = 2;
+  bytes binary_data = 3;
+  string meta_info = 4;
+  string updated_at = 5;
+}
